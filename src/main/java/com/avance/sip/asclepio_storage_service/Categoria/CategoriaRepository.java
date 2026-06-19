@@ -1,0 +1,14 @@
+package com.avance.sip.asclepio_storage_service.Categoria;
+
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
+import java.util.Optional;
+
+public interface CategoriaRepository extends
+        JpaRepository<Categoria, Long>,
+        JpaSpecificationExecutor<Categoria> {
+
+    Optional<Categoria> findByNomeCategoria(String nomeCategoria);
+}

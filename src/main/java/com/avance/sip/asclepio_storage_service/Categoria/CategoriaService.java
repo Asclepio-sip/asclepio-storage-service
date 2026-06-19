@@ -1,11 +1,15 @@
 package com.avance.sip.asclepio_storage_service.Categoria;
 
+import com.avance.sip.asclepio_storage_service.Categoria.dto.CategoriaFiltro;
 import com.avance.sip.asclepio_storage_service.Categoria.dto.CategoriaRequest;
-import com.avance.sip.asclepio_storage_service.CategoriaRepository;
+import com.avance.sip.asclepio_storage_service.Categoria.dto.CategoriaResponse;
+import com.avance.sip.asclepio_storage_service.exception.BadRequestException;
+import com.avance.sip.asclepio_storage_service.exception.NotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Set;
 
 @Service
@@ -26,25 +30,26 @@ public class CategoriaService {
         this.repository = repository;
     }
 
-    public List<Categoria> listarTodas() {
-        return repository.findAll();
-    }
-
-    public List<Categoria> listarCategoriasPrincipais() {
-        return repository.findByCategoriaPaiIsNull();
-    }
-
-    public List<Categoria> listarSubcategorias(Long categoriaPaiId) {
-        return repository.findByCategoriaPaiId(categoriaPaiId);
+    public Page<CategoriaResponse> listar(
+            CategoriaFiltro filtro,
+            Pageable pageable
+    ) {
+        return repository
+                .findAll(CategoriaSpecification.filtrar(filtro), pageable)
+                .map(CategoriaResponse::fromEntity);
     }
 
     public Categoria criar(CategoriaRequest dto) {
+
+        if (dto == null) {
+            throw new BadRequestException("Dados da categoria são obrigatórios");
+        }
+
         validarNome(dto.nomeCategoria());
 
-        repository.findByNomeCategoria(dto.nomeCategoria().trim())
-                .ifPresent(c -> {
-                    throw new RuntimeException("Categoria já existe");
-                });
+        repository.findByNomeCategoria(dto.nomeCategoria().trim()).ifPresent(c -> {
+            throw new BadRequestException("Categoria já existe");
+        });
 
         Categoria categoriaPai = null;
 
@@ -63,6 +68,11 @@ public class CategoriaService {
     }
 
     public Categoria editar(Long id, CategoriaRequest dto) {
+
+        if (dto == null) {
+            throw new BadRequestException("Dados da categoria são obrigatórios");
+        }
+
         validarNome(dto.nomeCategoria());
 
         Categoria categoria = buscarPorId(id);
@@ -75,7 +85,7 @@ public class CategoriaService {
             categoriaPai = buscarPorId(dto.categoriaPaiId());
 
             if (categoriaPai.getId().equals(categoria.getId())) {
-                throw new RuntimeException("A categoria não pode ser pai dela mesma");
+                throw new BadRequestException("A categoria não pode ser pai dela mesma");
             }
         }
 
@@ -88,35 +98,43 @@ public class CategoriaService {
     }
 
     public void deletar(Long id) {
+
         Categoria categoria = buscarPorId(id);
 
         validarCategoriaProtegida(categoria);
 
         if (!categoria.getSubcategorias().isEmpty()) {
-            throw new RuntimeException("Categoria possui subcategorias vinculadas.");
+            throw new BadRequestException("Categoria possui subcategorias vinculadas");
         }
 
         try {
             repository.delete(categoria);
         } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("Categoria possui produtos vinculados.");
+            throw new BadRequestException("Categoria possui produtos vinculados");
         }
     }
 
     private Categoria buscarPorId(Long id) {
+
+        if (id == null) {
+            throw new BadRequestException("ID da categoria é obrigatório");
+        }
+
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
+                .orElseThrow(() -> new NotFoundException("Categoria não encontrada com id: " + id));
     }
 
     private void validarNome(String nome) {
+
         if (nome == null || nome.isBlank()) {
-            throw new RuntimeException("Nome da categoria é obrigatório");
+            throw new BadRequestException("Nome da categoria é obrigatório");
         }
     }
 
     private void validarCategoriaProtegida(Categoria categoria) {
+
         if (CATEGORIAS_PROTEGIDAS.contains(categoria.getNomeCategoria())) {
-            throw new RuntimeException("Essa categoria é fundamental e não pode ser alterada");
+            throw new BadRequestException("Essa categoria é fundamental e não pode ser alterada");
         }
     }
 }

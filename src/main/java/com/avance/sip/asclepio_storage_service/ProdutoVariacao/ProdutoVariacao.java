@@ -33,12 +33,6 @@ public class ProdutoVariacao {
     @Column(name = "PROV_CODIGO_BARRAS", length = 100, unique = true)
     private String codigoBarras;
 
-    @Column(name = "PROV_DOSAGEM", length = 100)
-    private String dosagem;
-
-    @Column(name = "PROV_APRESENTACAO", length = 150)
-    private String apresentacao;
-
     @Column(name = "PROV_ATIVO", nullable = false)
     private Boolean ativo = true;
 
@@ -102,21 +96,6 @@ public class ProdutoVariacao {
         this.codigoBarras = codigoBarras;
     }
 
-    public String getDosagem() {
-        return dosagem;
-    }
-
-    public void setDosagem(String dosagem) {
-        this.dosagem = dosagem;
-    }
-
-    public String getApresentacao() {
-        return apresentacao;
-    }
-
-    public void setApresentacao(String apresentacao) {
-        this.apresentacao = apresentacao;
-    }
 
     public Boolean getAtivo() {
         return ativo;

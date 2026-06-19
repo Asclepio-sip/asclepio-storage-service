@@ -2,12 +2,15 @@ package com.avance.sip.asclepio_storage_service.ProdutoVariacao;
 
 import com.avance.sip.asclepio_storage_service.Produto.Produto;
 import com.avance.sip.asclepio_storage_service.Produto.ProdutoRepository;
+import com.avance.sip.asclepio_storage_service.ProdutoVariacao.dto.ProdutoVariacaoFiltro;
 import com.avance.sip.asclepio_storage_service.ProdutoVariacao.dto.ProdutoVariacaoRequest;
 import com.avance.sip.asclepio_storage_service.ProdutoVariacao.dto.ProdutoVariacaoResponse;
 import com.avance.sip.asclepio_storage_service.ProdutoVariacao.dto.ProdutoVariacaoUpdateRequest;
+import com.avance.sip.asclepio_storage_service.exception.BadRequestException;
+import com.avance.sip.asclepio_storage_service.exception.NotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class ProdutoVariacaoService {
@@ -24,25 +27,29 @@ public class ProdutoVariacaoService {
     }
 
     public ProdutoVariacaoResponse criar(Long produtoId, ProdutoVariacaoRequest dto) {
+
         validarCriacao(produtoId, dto);
 
         Produto produto = buscarProduto(produtoId);
 
         if (repository.existsByProduto_IdAndNomeVariacaoIgnoreCase(produtoId, dto.nomeVariacao().trim())) {
-            throw new RuntimeException("Já existe uma variação com esse nome para este produto");
+            throw new BadRequestException("Já existe uma variação com esse nome para este produto");
         }
 
-        if (dto.codigoBarras() != null && !dto.codigoBarras().isBlank()
+        if (dto.codigoBarras() != null
+                && !dto.codigoBarras().isBlank()
                 && repository.existsByCodigoBarras(dto.codigoBarras().trim())) {
-            throw new RuntimeException("Já existe uma variação com esse código de barras");
+            throw new BadRequestException("Já existe uma variação com esse código de barras");
         }
 
         ProdutoVariacao variacao = new ProdutoVariacao();
         variacao.setProduto(produto);
         variacao.setNomeVariacao(dto.nomeVariacao().trim());
-        variacao.setCodigoBarras(dto.codigoBarras());
-        variacao.setDosagem(dto.dosagem());
-        variacao.setApresentacao(dto.apresentacao());
+
+        if (dto.codigoBarras() != null && !dto.codigoBarras().isBlank()) {
+            variacao.setCodigoBarras(dto.codigoBarras().trim());
+        }
+
         variacao.setAtivo(true);
 
         repository.save(variacao);
@@ -50,52 +57,53 @@ public class ProdutoVariacaoService {
         return ProdutoVariacaoResponse.fromEntity(variacao);
     }
 
-    public List<ProdutoVariacaoResponse> listarPorProduto(Long produtoId) {
-        buscarProduto(produtoId);
-
-        return repository.findByProduto_Id(produtoId)
-                .stream()
-                .map(ProdutoVariacaoResponse::fromEntity)
-                .toList();
+    public Page<ProdutoVariacaoResponse> listar(
+            ProdutoVariacaoFiltro filtro,
+            Pageable pageable
+    ) {
+        return repository
+                .findAll(ProdutoVariacaoSpecification.filtrar(filtro), pageable)
+                .map(ProdutoVariacaoResponse::fromEntity);
     }
 
-    public ProdutoVariacaoResponse atualizar(Long id, ProdutoVariacaoUpdateRequest dto) {
+    public ProdutoVariacaoResponse atualizar(
+            Long id,
+            ProdutoVariacaoUpdateRequest dto
+    ) {
+
         if (dto == null) {
-            throw new RuntimeException("Dados da variação são obrigatórios");
+            throw new BadRequestException("Dados da variação são obrigatórios");
         }
 
         ProdutoVariacao variacao = buscarVariacao(id);
 
         if (dto.nomeVariacao() != null && !dto.nomeVariacao().isBlank()) {
+
+            String novoNome = dto.nomeVariacao().trim();
+
             boolean existe = repository.existsByProduto_IdAndNomeVariacaoIgnoreCase(
                     variacao.getProduto().getId(),
-                    dto.nomeVariacao().trim()
+                    novoNome
             );
 
-            if (existe && !dto.nomeVariacao().equalsIgnoreCase(variacao.getNomeVariacao())) {
-                throw new RuntimeException("Já existe uma variação com esse nome");
+            if (existe && !novoNome.equalsIgnoreCase(variacao.getNomeVariacao())) {
+                throw new BadRequestException("Já existe uma variação com esse nome para este produto");
             }
 
-            variacao.setNomeVariacao(dto.nomeVariacao().trim());
+            variacao.setNomeVariacao(novoNome);
         }
 
         if (dto.codigoBarras() != null && !dto.codigoBarras().isBlank()) {
-            repository.findByCodigoBarras(dto.codigoBarras().trim())
-                    .ifPresent(existente -> {
-                        if (!existente.getId().equals(variacao.getId())) {
-                            throw new RuntimeException("Já existe uma variação com esse código de barras");
-                        }
-                    });
 
-            variacao.setCodigoBarras(dto.codigoBarras().trim());
-        }
+            String novoCodigoBarras = dto.codigoBarras().trim();
 
-        if (dto.dosagem() != null) {
-            variacao.setDosagem(dto.dosagem());
-        }
+            repository.findByCodigoBarras(novoCodigoBarras).ifPresent(existente -> {
+                if (!existente.getId().equals(variacao.getId())) {
+                    throw new BadRequestException("Já existe uma variação com esse código de barras");
+                }
+            });
 
-        if (dto.apresentacao() != null) {
-            variacao.setApresentacao(dto.apresentacao());
+            variacao.setCodigoBarras(novoCodigoBarras);
         }
 
         if (dto.ativo() != null) {
@@ -113,34 +121,40 @@ public class ProdutoVariacaoService {
     }
 
     private Produto buscarProduto(Long produtoId) {
+
         if (produtoId == null) {
-            throw new RuntimeException("Produto é obrigatório");
+            throw new BadRequestException("Produto é obrigatório");
         }
 
         return produtoRepository.findById(produtoId)
-                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+                .orElseThrow(() -> new NotFoundException("Produto não encontrado com id: " + produtoId));
     }
 
     private ProdutoVariacao buscarVariacao(Long id) {
+
         if (id == null) {
-            throw new RuntimeException("ID da variação é obrigatório");
+            throw new BadRequestException("ID da variação é obrigatório");
         }
 
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Variação não encontrada"));
+                .orElseThrow(() -> new NotFoundException("Variação não encontrada com id: " + id));
     }
 
-    private void validarCriacao(Long produtoId, ProdutoVariacaoRequest dto) {
+    private void validarCriacao(
+            Long produtoId,
+            ProdutoVariacaoRequest dto
+    ) {
+
         if (produtoId == null) {
-            throw new RuntimeException("Produto é obrigatório");
+            throw new BadRequestException("Produto é obrigatório");
         }
 
         if (dto == null) {
-            throw new RuntimeException("Dados da variação são obrigatórios");
+            throw new BadRequestException("Dados da variação são obrigatórios");
         }
 
         if (dto.nomeVariacao() == null || dto.nomeVariacao().isBlank()) {
-            throw new RuntimeException("Nome da variação é obrigatório");
+            throw new BadRequestException("Nome da variação é obrigatório");
         }
     }
 }

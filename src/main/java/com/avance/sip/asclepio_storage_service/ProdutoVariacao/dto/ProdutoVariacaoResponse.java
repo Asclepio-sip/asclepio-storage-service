@@ -9,8 +9,6 @@ public record ProdutoVariacaoResponse(
         String nomeProduto,
         String nomeVariacao,
         String codigoBarras,
-        String dosagem,
-        String apresentacao,
         Boolean ativo
 ) {
 
@@ -21,8 +19,6 @@ public record ProdutoVariacaoResponse(
                 variacao.getProduto().getNome(),
                 variacao.getNomeVariacao(),
                 variacao.getCodigoBarras(),
-                variacao.getDosagem(),
-                variacao.getApresentacao(),
                 variacao.getAtivo()
         );
     }

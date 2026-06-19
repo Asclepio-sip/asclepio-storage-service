@@ -1,13 +1,11 @@
 package com.avance.sip.asclepio_storage_service.ProdutoVariacao;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.util.List;
 import java.util.Optional;
 
-public interface ProdutoVariacaoRepository extends JpaRepository<ProdutoVariacao, Long> {
-
-    List<ProdutoVariacao> findByProduto_Id(Long produtoId);
+public interface ProdutoVariacaoRepository extends JpaRepository<ProdutoVariacao, Long>, JpaSpecificationExecutor<ProdutoVariacao> {
 
     boolean existsByProduto_IdAndNomeVariacaoIgnoreCase(Long produtoId, String nomeVariacao);
 

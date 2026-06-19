@@ -1,6 +1,5 @@
 package com.avance.sip.asclepio_storage_service.Produto;
 import com.avance.sip.asclepio_storage_service.Categoria.Categoria;
-import com.avance.sip.asclepio_storage_service.Produto.Enum.StatusProduto;
 import com.avance.sip.asclepio_storage_service.ProdutoVariacao.ProdutoVariacao;
 import jakarta.persistence.*;
 

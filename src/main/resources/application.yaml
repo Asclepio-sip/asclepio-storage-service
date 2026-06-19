@@ -26,3 +26,7 @@ r2:
   bucket: ${R2_BUCKET}
   endpoint: ${R2_ENDPOINT}
   public-url: ${R2_PUBLIC_URL}
+api:
+  security:
+    token:
+      secret: ${JWT_SECRET}

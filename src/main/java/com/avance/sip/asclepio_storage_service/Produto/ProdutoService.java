@@ -1,17 +1,18 @@
 package com.avance.sip.asclepio_storage_service.Produto;
 
 import com.avance.sip.asclepio_storage_service.Categoria.Categoria;
-import com.avance.sip.asclepio_storage_service.CategoriaRepository;
-import com.avance.sip.asclepio_storage_service.Produto.Enum.StatusProduto;
+import com.avance.sip.asclepio_storage_service.Categoria.CategoriaRepository;
 import com.avance.sip.asclepio_storage_service.Produto.dto.ProdutoFiltro;
 import com.avance.sip.asclepio_storage_service.Produto.dto.ProdutoRequest;
 import com.avance.sip.asclepio_storage_service.Produto.dto.ProdutoResponse;
 import com.avance.sip.asclepio_storage_service.Produto.dto.ProdutoUpdateRequest;
+import com.avance.sip.asclepio_storage_service.exception.BadRequestException;
+import com.avance.sip.asclepio_storage_service.exception.NotFoundException;
+import com.avance.sip.asclepio_storage_service.storage.service.StorageService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import com.avance.sip.asclepio_storage_service.storage.service.StorageService;
 
 @Service
 public class ProdutoService {
@@ -35,18 +36,18 @@ public class ProdutoService {
         validarCriacao(dto);
 
         if (repository.existsByNomeIgnoreCase(dto.nome().trim())) {
-            throw new RuntimeException("Produto já existe");
+            throw new BadRequestException("Produto já existe");
         }
 
-        Categoria categoria = categoriaRepository.findById(dto.categoriaId())
-                .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
+        Categoria categoria = buscarCategoriaPorId(dto.categoriaId());
 
         Produto produto = new Produto();
-        produto.setNome(dto.nome());
+        produto.setNome(dto.nome().trim());
         produto.setDescricao(dto.descricao());
         produto.setMarca(dto.marca());
         produto.setImagemUrl(dto.imagemUrl());
         produto.setCategoria(categoria);
+
         return repository.save(produto);
     }
 
@@ -62,7 +63,7 @@ public class ProdutoService {
     public Produto editar(Long id, ProdutoUpdateRequest dto) {
 
         if (dto == null) {
-            throw new RuntimeException("Dados para edição do produto são obrigatórios");
+            throw new BadRequestException("Dados para edição do produto são obrigatórios");
         }
 
         Produto produto = buscarPorId(id);
@@ -84,15 +85,12 @@ public class ProdutoService {
         }
 
         if (dto.categoriaId() != null) {
-            Categoria categoria = categoriaRepository.findById(dto.categoriaId())
-                    .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
-
+            Categoria categoria = buscarCategoriaPorId(dto.categoriaId());
             produto.setCategoria(categoria);
         }
 
         return repository.save(produto);
     }
-
 
     public void deletar(Long id) {
         Produto produto = buscarPorId(id);
@@ -100,28 +98,39 @@ public class ProdutoService {
     }
 
     private Produto buscarPorId(Long id) {
+
         if (id == null) {
-            throw new RuntimeException("ID do produto é obrigatório");
+            throw new BadRequestException("ID do produto é obrigatório");
         }
 
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Produto não encontrado"));
+                .orElseThrow(() -> new NotFoundException("Produto não encontrado com id: " + id));
+    }
+
+    private Categoria buscarCategoriaPorId(Long categoriaId) {
+
+        if (categoriaId == null) {
+            throw new BadRequestException("Categoria é obrigatória");
+        }
+
+        return categoriaRepository.findById(categoriaId)
+                .orElseThrow(() -> new NotFoundException("Categoria não encontrada com id: " + categoriaId));
     }
 
     private void validarCriacao(ProdutoRequest dto) {
+
         if (dto == null) {
-            throw new RuntimeException("Dados do produto são obrigatórios");
+            throw new BadRequestException("Dados do produto são obrigatórios");
         }
 
         if (dto.nome() == null || dto.nome().isBlank()) {
-            throw new RuntimeException("Nome do produto é obrigatório");
+            throw new BadRequestException("Nome do produto é obrigatório");
         }
 
         if (dto.categoriaId() == null) {
-            throw new RuntimeException("Categoria obrigatória");
+            throw new BadRequestException("Categoria é obrigatória");
         }
     }
-
 
     public Produto criarComImagem(
             String nome,
@@ -130,16 +139,12 @@ public class ProdutoService {
             Long categoriaId,
             MultipartFile imagem
     ) {
+
         if (nome == null || nome.isBlank()) {
-            throw new RuntimeException("Nome do produto é obrigatório");
+            throw new BadRequestException("Nome do produto é obrigatório");
         }
 
-        if (categoriaId == null) {
-            throw new RuntimeException("Categoria é obrigatória");
-        }
-
-        Categoria categoria = categoriaRepository.findById(categoriaId)
-                .orElseThrow(() -> new RuntimeException("Categoria não encontrada"));
+        Categoria categoria = buscarCategoriaPorId(categoriaId);
 
         String imagemUrl = null;
 
@@ -147,11 +152,12 @@ public class ProdutoService {
             try {
                 imagemUrl = storageService.upload(imagem);
             } catch (Exception e) {
-                throw new RuntimeException("Erro ao enviar imagem do produto", e);
+                throw new BadRequestException("Erro ao enviar imagem do produto");
             }
         }
+
         Produto produto = new Produto();
-        produto.setNome(nome);
+        produto.setNome(nome.trim());
         produto.setDescricao(descricao);
         produto.setMarca(marca);
         produto.setCategoria(categoria);
