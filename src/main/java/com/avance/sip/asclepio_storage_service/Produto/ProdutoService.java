@@ -12,7 +12,10 @@ import com.avance.sip.asclepio_storage_service.storage.service.StorageService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.function.Consumer;
 
 @Service
 public class ProdutoService {
@@ -60,6 +63,7 @@ public class ProdutoService {
                 .map(ProdutoResponse::fromEntity);
     }
 
+    @Transactional
     public Produto editar(Long id, ProdutoUpdateRequest dto) {
 
         if (dto == null) {
@@ -68,21 +72,10 @@ public class ProdutoService {
 
         Produto produto = buscarPorId(id);
 
-        if (dto.nome() != null && !dto.nome().isBlank()) {
-            produto.setNome(dto.nome().trim());
-        }
-
-        if (dto.descricao() != null) {
-            produto.setDescricao(dto.descricao());
-        }
-
-        if (dto.marca() != null) {
-            produto.setMarca(dto.marca());
-        }
-
-        if (dto.imagemUrl() != null) {
-            produto.setImagemUrl(dto.imagemUrl());
-        }
+        atualizarTexto(dto.nome(), produto::setNome);
+        atualizarTexto(dto.descricao(), produto::setDescricao);
+        atualizarTexto(dto.marca(), produto::setMarca);
+        atualizarTexto(dto.imagemUrl(), produto::setImagemUrl);
 
         if (dto.categoriaId() != null) {
             Categoria categoria = buscarCategoriaPorId(dto.categoriaId());
@@ -92,6 +85,23 @@ public class ProdutoService {
         return repository.save(produto);
     }
 
+    private void atualizarTexto(String valor, Consumer<String> setter) {
+        if (valor == null) {
+            return;
+        }
+
+        String valorTratado = valor.trim();
+
+        if (valorTratado.isBlank()) {
+            return;
+        }
+
+        if (valorTratado.equalsIgnoreCase("string")) {
+            return;
+        }
+
+        setter.accept(valorTratado);
+    }
     public void deletar(Long id) {
         Produto produto = buscarPorId(id);
         repository.delete(produto);
@@ -152,7 +162,8 @@ public class ProdutoService {
             try {
                 imagemUrl = storageService.upload(imagem);
             } catch (Exception e) {
-                throw new BadRequestException("Erro ao enviar imagem do produto");
+                e.printStackTrace();
+                throw new BadRequestException("Erro ao enviar imagem do produto: " + e.getMessage());
             }
         }
 

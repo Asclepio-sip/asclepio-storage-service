@@ -73,28 +73,57 @@ public class CategoriaService {
             throw new BadRequestException("Dados da categoria são obrigatórios");
         }
 
-        validarNome(dto.nomeCategoria());
-
         Categoria categoria = buscarPorId(id);
 
         validarCategoriaProtegida(categoria);
 
-        Categoria categoriaPai = null;
+        if (deveAtualizarTexto(dto.nomeCategoria())) {
+
+            String novoNome = dto.nomeCategoria().trim();
+
+            repository.findByNomeCategoria(novoNome).ifPresent(existente -> {
+                if (!existente.getId().equals(categoria.getId())) {
+                    throw new BadRequestException("Categoria já existe");
+                }
+            });
+
+            categoria.setNomeCategoria(novoNome);
+        }
+
+        if (deveAtualizarTexto(dto.descricao())) {
+            categoria.setDescricao(dto.descricao().trim());
+        }
+
+        if (deveAtualizarTexto(dto.icone())) {
+            categoria.setIcone(dto.icone().trim());
+        }
 
         if (dto.categoriaPaiId() != null) {
-            categoriaPai = buscarPorId(dto.categoriaPaiId());
+
+            Categoria categoriaPai = buscarPorId(dto.categoriaPaiId());
 
             if (categoriaPai.getId().equals(categoria.getId())) {
                 throw new BadRequestException("A categoria não pode ser pai dela mesma");
             }
+
+            categoria.setCategoriaPai(categoriaPai);
         }
 
-        categoria.setNomeCategoria(dto.nomeCategoria().trim());
-        categoria.setDescricao(dto.descricao());
-        categoria.setIcone(dto.icone());
-        categoria.setCategoriaPai(categoriaPai);
-
         return repository.save(categoria);
+    }
+
+    private boolean deveAtualizarTexto(String valor) {
+        if (valor == null) {
+            return false;
+        }
+
+        String valorTratado = valor.trim();
+
+        if (valorTratado.isBlank()) {
+            return false;
+        }
+
+        return !valorTratado.equalsIgnoreCase("string");
     }
 
     public void deletar(Long id) {

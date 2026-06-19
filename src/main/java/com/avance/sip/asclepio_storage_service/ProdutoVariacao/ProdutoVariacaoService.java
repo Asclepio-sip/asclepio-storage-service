@@ -66,10 +66,7 @@ public class ProdutoVariacaoService {
                 .map(ProdutoVariacaoResponse::fromEntity);
     }
 
-    public ProdutoVariacaoResponse atualizar(
-            Long id,
-            ProdutoVariacaoUpdateRequest dto
-    ) {
+    public ProdutoVariacaoResponse atualizar(Long id, ProdutoVariacaoUpdateRequest dto) {
 
         if (dto == null) {
             throw new BadRequestException("Dados da variação são obrigatórios");
@@ -77,7 +74,7 @@ public class ProdutoVariacaoService {
 
         ProdutoVariacao variacao = buscarVariacao(id);
 
-        if (dto.nomeVariacao() != null && !dto.nomeVariacao().isBlank()) {
+        if (deveAtualizarTexto(dto.nomeVariacao())) {
 
             String novoNome = dto.nomeVariacao().trim();
 
@@ -93,7 +90,7 @@ public class ProdutoVariacaoService {
             variacao.setNomeVariacao(novoNome);
         }
 
-        if (dto.codigoBarras() != null && !dto.codigoBarras().isBlank()) {
+        if (deveAtualizarTexto(dto.codigoBarras())) {
 
             String novoCodigoBarras = dto.codigoBarras().trim();
 
@@ -113,6 +110,20 @@ public class ProdutoVariacaoService {
         repository.save(variacao);
 
         return ProdutoVariacaoResponse.fromEntity(variacao);
+    }
+
+    private boolean deveAtualizarTexto(String valor) {
+        if (valor == null) {
+            return false;
+        }
+
+        String valorTratado = valor.trim();
+
+        if (valorTratado.isBlank()) {
+            return false;
+        }
+
+        return !valorTratado.equalsIgnoreCase("string");
     }
 
     public void deletar(Long id) {

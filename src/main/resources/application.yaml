@@ -29,4 +29,4 @@ r2:
 api:
   security:
     token:
-      secret: ${JWT_SECRET}
+      secret: ${JWT_SECRET:my-secreat-key}
