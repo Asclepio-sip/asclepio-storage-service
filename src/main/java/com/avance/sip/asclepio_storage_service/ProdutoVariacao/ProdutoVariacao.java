@@ -11,8 +11,8 @@ import jakarta.persistence.*;
                         columnNames = {"PROV_PRODUTO_ID", "PROV_NOME"}
                 ),
                 @UniqueConstraint(
-                        name = "UK_PRODUTO_VARIACAO_CODIGO_BARRAS",
-                        columnNames = "PROV_CODIGO_BARRAS"
+                        name = "UK_PRODUTO_VARIACAO_PRODUTO_CODIGO",
+                        columnNames = {"PROV_PRODUTO_ID", "PROV_CODIGO_BARRAS"}
                 )
         },
         indexes = {
@@ -30,7 +30,7 @@ public class ProdutoVariacao {
     @Column(name = "PROV_NOME", nullable = false, length = 150)
     private String nomeVariacao;
 
-    @Column(name = "PROV_CODIGO_BARRAS", length = 100, unique = true)
+    @Column(name = "PROV_CODIGO_BARRAS", length = 100)
     private String codigoBarras;
 
     @Column(name = "PROV_ATIVO", nullable = false)

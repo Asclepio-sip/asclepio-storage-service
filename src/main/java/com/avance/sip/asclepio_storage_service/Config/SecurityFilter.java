@@ -4,13 +4,11 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import com.avance.sip.asclepio_storage_service.Config.TokenService;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,9 +17,11 @@ import java.util.List;
 public class SecurityFilter extends OncePerRequestFilter {
 
     private final TokenService tokenService;
+    private final EmpresaContext empresaContext;
 
-    public SecurityFilter(TokenService tokenService) {
+    public SecurityFilter(TokenService tokenService, EmpresaContext empresaContext) {
         this.tokenService = tokenService;
+        this.empresaContext = empresaContext;
     }
 
     @Override
@@ -31,56 +31,62 @@ public class SecurityFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String token = recoverToken(request);
+        try {
+            String token = recoverToken(request);
 
-        if (token != null) {
-
-            try {
+            if (token != null) {
 
                 var decodedJWT = tokenService.validateToken(token);
 
                 String username = decodedJWT.getSubject();
 
-                List<String> permissions =
-                        decodedJWT.getClaim("permissions")
-                                .asList(String.class);
+                Long empresaId = decodedJWT
+                        .getClaim("empresaId")
+                        .asLong();
 
-                var authorities = permissions.stream()
+                List<String> permissions = decodedJWT
+                        .getClaim("permissions")
+                        .asList(String.class);
+
+                var authorities = permissions == null
+                        ? List.<SimpleGrantedAuthority>of()
+                        : permissions.stream()
                         .map(SimpleGrantedAuthority::new)
                         .toList();
 
-                var authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                username,
-                                null,
-                                authorities
-                        );
+                if (username != null && empresaId != null) {
 
-                SecurityContextHolder.getContext()
-                        .setAuthentication(authentication);
+                    empresaContext.setEmpresaId(empresaId);
 
-            } catch (Exception e) {
+                    var authentication = new UsernamePasswordAuthenticationToken(
+                            username,
+                            null,
+                            authorities
+                    );
 
-                SecurityContextHolder.clearContext();
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
-        }
 
-        filterChain.doFilter(request, response);
+            filterChain.doFilter(request, response);
+
+        } catch (Exception e) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+
+        } finally {
+            empresaContext.limpar();
+        }
     }
 
     private String recoverToken(HttpServletRequest request) {
 
-        String authorizationHeader =
-                request.getHeader("Authorization");
+        String authorizationHeader = request.getHeader("Authorization");
 
-        if (authorizationHeader == null
-                || !authorizationHeader.startsWith("Bearer ")) {
-
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             return null;
         }
 
-        return authorizationHeader
-                .replace("Bearer ", "")
-                .trim();
+        return authorizationHeader.replace("Bearer ", "").trim();
     }
 }

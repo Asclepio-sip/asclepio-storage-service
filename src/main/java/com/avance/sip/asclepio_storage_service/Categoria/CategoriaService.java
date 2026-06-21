@@ -3,6 +3,7 @@ package com.avance.sip.asclepio_storage_service.Categoria;
 import com.avance.sip.asclepio_storage_service.Categoria.dto.CategoriaFiltro;
 import com.avance.sip.asclepio_storage_service.Categoria.dto.CategoriaRequest;
 import com.avance.sip.asclepio_storage_service.Categoria.dto.CategoriaResponse;
+import com.avance.sip.asclepio_storage_service.Config.EmpresaContext;
 import com.avance.sip.asclepio_storage_service.exception.BadRequestException;
 import com.avance.sip.asclepio_storage_service.exception.NotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -10,32 +11,26 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
-
 @Service
 public class CategoriaService {
 
     private final CategoriaRepository repository;
+    private final EmpresaContext  empresaContext;
 
-    private static final Set<String> CATEGORIAS_PROTEGIDAS = Set.of(
-            "Medicamentos",
-            "Beleza",
-            "Higiene",
-            "Infantil",
-            "Vitaminas",
-            "Promoções"
-    );
-
-    public CategoriaService(CategoriaRepository repository) {
+    public CategoriaService(
+            CategoriaRepository repository,
+            EmpresaContext empresaContext
+    ) {
         this.repository = repository;
+        this.empresaContext = empresaContext;
     }
 
-    public Page<CategoriaResponse> listar(
-            CategoriaFiltro filtro,
-            Pageable pageable
-    ) {
+    public Page<CategoriaResponse> listar(CategoriaFiltro filtro, Pageable pageable) {
+
+        Long empresaId = empresaContext.getEmpresaId();
+
         return repository
-                .findAll(CategoriaSpecification.filtrar(filtro), pageable)
+                .findAll(CategoriaSpecification.filtrar(filtro, empresaId), pageable)
                 .map(CategoriaResponse::fromEntity);
     }
 
@@ -47,22 +42,30 @@ public class CategoriaService {
 
         validarNome(dto.nomeCategoria());
 
-        repository.findByNomeCategoria(dto.nomeCategoria().trim()).ifPresent(c -> {
-            throw new BadRequestException("Categoria já existe");
-        });
+        Long empresaId = empresaContext.getEmpresaId();
+        String nomeTratado = dto.nomeCategoria().trim();
+
+        if (repository.existsByNomeCategoriaAndEmpresaId(nomeTratado, empresaId)) {
+            throw new BadRequestException("Categoria já existe nessa empresa");
+        }
 
         Categoria categoriaPai = null;
 
         if (dto.categoriaPaiId() != null) {
             categoriaPai = buscarPorId(dto.categoriaPaiId());
+
+            if (!categoriaPai.getEmpresaId().equals(empresaId)) {
+                throw new BadRequestException("Categoria pai não pertence à empresa logada");
+            }
         }
 
         Categoria categoria = new Categoria();
-        categoria.setNomeCategoria(dto.nomeCategoria().trim());
+        categoria.setNomeCategoria(nomeTratado);
         categoria.setDescricao(dto.descricao());
         categoria.setIcone(dto.icone());
         categoria.setCategoriaPai(categoriaPai);
         categoria.setAtiva(true);
+        categoria.setEmpresaId(empresaId);
 
         return repository.save(categoria);
     }
@@ -75,17 +78,18 @@ public class CategoriaService {
 
         Categoria categoria = buscarPorId(id);
 
-        validarCategoriaProtegida(categoria);
+        Long empresaId = empresaContext.getEmpresaId();
 
         if (deveAtualizarTexto(dto.nomeCategoria())) {
 
             String novoNome = dto.nomeCategoria().trim();
 
-            repository.findByNomeCategoria(novoNome).ifPresent(existente -> {
-                if (!existente.getId().equals(categoria.getId())) {
-                    throw new BadRequestException("Categoria já existe");
-                }
-            });
+            repository.findByNomeCategoriaAndEmpresaId(novoNome, empresaId)
+                    .ifPresent(existente -> {
+                        if (!existente.getId().equals(categoria.getId())) {
+                            throw new BadRequestException("Categoria já existe nessa empresa");
+                        }
+                    });
 
             categoria.setNomeCategoria(novoNome);
         }
@@ -106,31 +110,19 @@ public class CategoriaService {
                 throw new BadRequestException("A categoria não pode ser pai dela mesma");
             }
 
+            if (!categoriaPai.getEmpresaId().equals(empresaId)) {
+                throw new BadRequestException("Categoria pai não pertence à empresa logada");
+            }
+
             categoria.setCategoriaPai(categoriaPai);
         }
 
         return repository.save(categoria);
     }
 
-    private boolean deveAtualizarTexto(String valor) {
-        if (valor == null) {
-            return false;
-        }
-
-        String valorTratado = valor.trim();
-
-        if (valorTratado.isBlank()) {
-            return false;
-        }
-
-        return !valorTratado.equalsIgnoreCase("string");
-    }
-
     public void deletar(Long id) {
 
         Categoria categoria = buscarPorId(id);
-
-        validarCategoriaProtegida(categoria);
 
         if (!categoria.getSubcategorias().isEmpty()) {
             throw new BadRequestException("Categoria possui subcategorias vinculadas");
@@ -149,7 +141,7 @@ public class CategoriaService {
             throw new BadRequestException("ID da categoria é obrigatório");
         }
 
-        return repository.findById(id)
+        return repository.findByIdAndEmpresaId(id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new NotFoundException("Categoria não encontrada com id: " + id));
     }
 
@@ -160,10 +152,15 @@ public class CategoriaService {
         }
     }
 
-    private void validarCategoriaProtegida(Categoria categoria) {
+    private boolean deveAtualizarTexto(String valor) {
 
-        if (CATEGORIAS_PROTEGIDAS.contains(categoria.getNomeCategoria())) {
-            throw new BadRequestException("Essa categoria é fundamental e não pode ser alterada");
+        if (valor == null) {
+            return false;
         }
+
+        String valorTratado = valor.trim();
+
+        return !valorTratado.isBlank()
+                && !valorTratado.equalsIgnoreCase("string");
     }
 }

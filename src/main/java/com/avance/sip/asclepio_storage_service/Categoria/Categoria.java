@@ -9,8 +9,12 @@ import java.util.List;
         name = "TB_CATEGORIA",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "UK_CAT_NOME_PAI",
-                        columnNames = {"CAT_NOME", "CAT_CATEGORIA_PAI_ID"}
+                        name = "UK_CAT_EMPRESA_NOME_PAI",
+                        columnNames = {
+                                "CAT_EMPRESA_ID",
+                                "CAT_NOME",
+                                "CAT_CATEGORIA_PAI_ID"
+                        }
                 )
         }
 )
@@ -40,6 +44,9 @@ public class Categoria {
     @OneToMany(mappedBy = "categoriaPai")
     private List<Categoria> subcategorias = new ArrayList<>();
 
+    @Column(name = "CAT_EMPRESA_ID", nullable = false)
+    private Long empresaId;
+
     public Categoria() {
     }
 
@@ -49,6 +56,15 @@ public class Categoria {
 
     public boolean possuiSubcategorias() {
         return !subcategorias.isEmpty();
+    }
+
+
+    public Long getEmpresaId() {
+        return empresaId;
+    }
+
+    public void setEmpresaId(Long empresaId) {
+        this.empresaId = empresaId;
     }
 
     public Long getId() {

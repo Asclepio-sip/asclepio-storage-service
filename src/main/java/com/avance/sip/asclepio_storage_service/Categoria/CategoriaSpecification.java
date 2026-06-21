@@ -12,21 +12,32 @@ public class CategoriaSpecification {
     private CategoriaSpecification() {
     }
 
-    public static Specification<Categoria> filtrar(CategoriaFiltro filtro) {
+    public static Specification<Categoria> filtrar(CategoriaFiltro filtro, Long empresaId) {
         return (root, query, cb) -> {
 
             List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(
+                    cb.equal(root.get("empresaId"), empresaId)
+            );
 
             if (filtro == null) {
                 return cb.and(predicates.toArray(Predicate[]::new));
             }
 
             if (filtro.nome() != null && !filtro.nome().isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("nomeCategoria")), "%" + filtro.nome().toLowerCase().trim() + "%"));
+                predicates.add(
+                        cb.like(
+                                cb.lower(root.get("nomeCategoria")),
+                                "%" + filtro.nome().toLowerCase().trim() + "%"
+                        )
+                );
             }
 
             if (filtro.categoriaPaiId() != null) {
-                predicates.add(cb.equal(root.get("categoriaPai").get("id"), filtro.categoriaPaiId()));
+                predicates.add(
+                        cb.equal(root.get("categoriaPai").get("id"), filtro.categoriaPaiId())
+                );
             }
 
             if (Boolean.TRUE.equals(filtro.somentePrincipais())) {

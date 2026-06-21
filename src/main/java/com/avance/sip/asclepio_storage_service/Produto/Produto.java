@@ -12,8 +12,8 @@ import java.util.List;
         name = "TB_PRODUTO",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "UK_PRODUTO_NOME",
-                        columnNames = "PRO_NOME"
+                        name = "UK_PRODUTO_EMPRESA_NOME",
+                        columnNames = {"PRO_EMPRESA_ID", "PRO_NOME"}
                 )
         }
 )
@@ -49,6 +49,9 @@ public class Produto {
     @OneToMany(mappedBy = "produto", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProdutoVariacao> variacoes = new ArrayList<>();
 
+    @Column(name = "PRO_EMPRESA_ID", nullable = false)
+    private Long empresaId;
+
     public Produto() {
     }
 
@@ -72,6 +75,14 @@ public class Produto {
         if (nome.length() > 150) {
             throw new IllegalArgumentException("Nome do produto deve ter no máximo 150 caracteres");
         }
+    }
+
+    public Long getEmpresaId() {
+        return empresaId;
+    }
+
+    public void setEmpresaId(Long empresaId) {
+        this.empresaId = empresaId;
     }
 
     public Long getId() {
