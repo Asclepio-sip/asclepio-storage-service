@@ -8,7 +8,9 @@ import java.util.Optional;
 public interface ProdutoRepository extends JpaRepository<Produto, Long>,
         JpaSpecificationExecutor<Produto> {
 
-    Optional<Produto> findByNome(String nome);
+    Optional<Produto> findByIdAndEmpresaId(Long id, Long empresaId);
 
-    boolean existsByNomeIgnoreCase(String nome);
+    Optional<Produto> findByNomeIgnoreCaseAndEmpresaId(String nome, Long empresaId);
+
+    boolean existsByNomeIgnoreCaseAndEmpresaId(String nome, Long empresaId);
 }

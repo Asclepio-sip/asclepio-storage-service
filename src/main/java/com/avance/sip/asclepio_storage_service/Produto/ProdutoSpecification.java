@@ -15,11 +15,13 @@ public class ProdutoSpecification {
     private ProdutoSpecification() {
     }
 
-    public static Specification<Produto> filtrar(ProdutoFiltro filtro) {
+    public static Specification<Produto> filtrar(ProdutoFiltro filtro, Long empresaId) {
 
         return (root, query, cb) -> {
 
             List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(cb.equal(root.get("empresaId"), empresaId));
 
             if (filtro == null) {
                 return cb.and(predicates.toArray(Predicate[]::new));
@@ -44,9 +46,7 @@ public class ProdutoSpecification {
             }
 
             if (filtro.categoriaId() != null) {
-                predicates.add(
-                        cb.equal(root.get("categoria").get("id"), filtro.categoriaId())
-                );
+                predicates.add(cb.equal(root.get("categoria").get("id"), filtro.categoriaId()));
             }
 
             if (filtro.nomeCategoria() != null && !filtro.nomeCategoria().isBlank()) {
@@ -57,7 +57,6 @@ public class ProdutoSpecification {
                         )
                 );
             }
-
 
             if (
                     filtro.variacao() != null && !filtro.variacao().isBlank()

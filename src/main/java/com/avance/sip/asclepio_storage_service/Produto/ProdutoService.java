@@ -2,6 +2,7 @@ package com.avance.sip.asclepio_storage_service.Produto;
 
 import com.avance.sip.asclepio_storage_service.Categoria.Categoria;
 import com.avance.sip.asclepio_storage_service.Categoria.CategoriaRepository;
+import com.avance.sip.asclepio_storage_service.Config.EmpresaContext;
 import com.avance.sip.asclepio_storage_service.Produto.dto.ProdutoFiltro;
 import com.avance.sip.asclepio_storage_service.Produto.dto.ProdutoRequest;
 import com.avance.sip.asclepio_storage_service.Produto.dto.ProdutoResponse;
@@ -23,43 +24,50 @@ public class ProdutoService {
     private final ProdutoRepository repository;
     private final CategoriaRepository categoriaRepository;
     private final StorageService storageService;
+    private final EmpresaContext empresaContext;
 
     public ProdutoService(
             ProdutoRepository repository,
             CategoriaRepository categoriaRepository,
-            StorageService storageService
+            StorageService storageService,
+            EmpresaContext empresaContext
     ) {
         this.repository = repository;
         this.categoriaRepository = categoriaRepository;
         this.storageService = storageService;
+        this.empresaContext = empresaContext;
     }
 
     public Produto criar(ProdutoRequest dto) {
 
         validarCriacao(dto);
 
-        if (repository.existsByNomeIgnoreCase(dto.nome().trim())) {
-            throw new BadRequestException("Produto já existe");
+        Long empresaId = empresaContext.getEmpresaId();
+        String nomeTratado = dto.nome().trim();
+
+        if (repository.existsByNomeIgnoreCaseAndEmpresaId(nomeTratado, empresaId)) {
+            throw new BadRequestException("Produto já existe nessa empresa");
         }
 
         Categoria categoria = buscarCategoriaPorId(dto.categoriaId());
 
         Produto produto = new Produto();
-        produto.setNome(dto.nome().trim());
+        produto.setNome(nomeTratado);
         produto.setDescricao(dto.descricao());
         produto.setMarca(dto.marca());
         produto.setImagemUrl(dto.imagemUrl());
         produto.setCategoria(categoria);
+        produto.setEmpresaId(empresaId);
 
         return repository.save(produto);
     }
 
-    public Page<ProdutoResponse> listarTodos(
-            ProdutoFiltro filtro,
-            Pageable pageable
-    ) {
+    public Page<ProdutoResponse> listarTodos(ProdutoFiltro filtro, Pageable pageable) {
+
+        Long empresaId = empresaContext.getEmpresaId();
+
         return repository
-                .findAll(ProdutoSpecification.filtrar(filtro), pageable)
+                .findAll(ProdutoSpecification.filtrar(filtro, empresaId), pageable)
                 .map(ProdutoResponse::fromEntity);
     }
 
@@ -71,8 +79,21 @@ public class ProdutoService {
         }
 
         Produto produto = buscarPorId(id);
+        Long empresaId = empresaContext.getEmpresaId();
 
-        atualizarTexto(dto.nome(), produto::setNome);
+        if (deveAtualizarTexto(dto.nome())) {
+            String novoNome = dto.nome().trim();
+
+            repository.findByNomeIgnoreCaseAndEmpresaId(novoNome, empresaId)
+                    .ifPresent(existente -> {
+                        if (!existente.getId().equals(produto.getId())) {
+                            throw new BadRequestException("Produto já existe nessa empresa");
+                        }
+                    });
+
+            produto.setNome(novoNome);
+        }
+
         atualizarTexto(dto.descricao(), produto::setDescricao);
         atualizarTexto(dto.marca(), produto::setMarca);
         atualizarTexto(dto.imagemUrl(), produto::setImagemUrl);
@@ -85,26 +106,55 @@ public class ProdutoService {
         return repository.save(produto);
     }
 
-    private void atualizarTexto(String valor, Consumer<String> setter) {
-        if (valor == null) {
-            return;
-        }
-
-        String valorTratado = valor.trim();
-
-        if (valorTratado.isBlank()) {
-            return;
-        }
-
-        if (valorTratado.equalsIgnoreCase("string")) {
-            return;
-        }
-
-        setter.accept(valorTratado);
-    }
     public void deletar(Long id) {
         Produto produto = buscarPorId(id);
         repository.delete(produto);
+    }
+
+    public Produto criarComImagem(
+            String nome,
+            String descricao,
+            String marca,
+            Long categoriaId,
+            MultipartFile imagem
+    ) {
+
+        if (nome == null || nome.isBlank()) {
+            throw new BadRequestException("Nome do produto é obrigatório");
+        }
+
+        if (categoriaId == null) {
+            throw new BadRequestException("Categoria é obrigatória");
+        }
+
+        Long empresaId = empresaContext.getEmpresaId();
+        String nomeTratado = nome.trim();
+
+        if (repository.existsByNomeIgnoreCaseAndEmpresaId(nomeTratado, empresaId)) {
+            throw new BadRequestException("Produto já existe nessa empresa");
+        }
+
+        Categoria categoria = buscarCategoriaPorId(categoriaId);
+
+        String imagemUrl = null;
+
+        if (imagem != null && !imagem.isEmpty()) {
+            try {
+                imagemUrl = storageService.upload(imagem);
+            } catch (Exception e) {
+                throw new BadRequestException("Erro ao enviar imagem do produto: " + e.getMessage());
+            }
+        }
+
+        Produto produto = new Produto();
+        produto.setNome(nomeTratado);
+        produto.setDescricao(descricao);
+        produto.setMarca(marca);
+        produto.setCategoria(categoria);
+        produto.setImagemUrl(imagemUrl);
+        produto.setEmpresaId(empresaId);
+
+        return repository.save(produto);
     }
 
     private Produto buscarPorId(Long id) {
@@ -113,7 +163,7 @@ public class ProdutoService {
             throw new BadRequestException("ID do produto é obrigatório");
         }
 
-        return repository.findById(id)
+        return repository.findByIdAndEmpresaId(id, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new NotFoundException("Produto não encontrado com id: " + id));
     }
 
@@ -123,7 +173,8 @@ public class ProdutoService {
             throw new BadRequestException("Categoria é obrigatória");
         }
 
-        return categoriaRepository.findById(categoriaId)
+        return categoriaRepository
+                .findByIdAndEmpresaId(categoriaId, empresaContext.getEmpresaId())
                 .orElseThrow(() -> new NotFoundException("Categoria não encontrada com id: " + categoriaId));
     }
 
@@ -142,38 +193,24 @@ public class ProdutoService {
         }
     }
 
-    public Produto criarComImagem(
-            String nome,
-            String descricao,
-            String marca,
-            Long categoriaId,
-            MultipartFile imagem
-    ) {
+    private void atualizarTexto(String valor, Consumer<String> setter) {
 
-        if (nome == null || nome.isBlank()) {
-            throw new BadRequestException("Nome do produto é obrigatório");
+        if (!deveAtualizarTexto(valor)) {
+            return;
         }
 
-        Categoria categoria = buscarCategoriaPorId(categoriaId);
+        setter.accept(valor.trim());
+    }
 
-        String imagemUrl = null;
+    private boolean deveAtualizarTexto(String valor) {
 
-        if (imagem != null && !imagem.isEmpty()) {
-            try {
-                imagemUrl = storageService.upload(imagem);
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new BadRequestException("Erro ao enviar imagem do produto: " + e.getMessage());
-            }
+        if (valor == null) {
+            return false;
         }
 
-        Produto produto = new Produto();
-        produto.setNome(nome.trim());
-        produto.setDescricao(descricao);
-        produto.setMarca(marca);
-        produto.setCategoria(categoria);
-        produto.setImagemUrl(imagemUrl);
+        String valorTratado = valor.trim();
 
-        return repository.save(produto);
+        return !valorTratado.isBlank()
+                && !valorTratado.equalsIgnoreCase("string");
     }
 }
