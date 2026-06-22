@@ -27,7 +27,7 @@ public class Produto {
     @Column(name = "PRO_NOME", nullable = false, length = 150)
     private String nome;
 
-    @Column(name = "PRO_DESCRICAO", length = 1000)
+    @Column(name = "PRO_DESCRICAO", length = 3000)
     private String descricao;
 
     @Column(name = "PRO_MARCA", length = 100)
