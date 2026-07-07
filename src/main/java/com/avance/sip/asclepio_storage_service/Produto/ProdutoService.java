@@ -157,7 +157,7 @@ public class ProdutoService {
         return repository.save(produto);
     }
 
-    private Produto buscarPorId(Long id) {
+    public Produto buscarPorId(Long id) {
 
         if (id == null) {
             throw new BadRequestException("ID do produto é obrigatório");

@@ -39,4 +39,9 @@ public interface ProdutoApi {
     @PreAuthorize("hasAuthority('ExcluirProduto')")
     @Operation(summary = "Deletar produto")
     ResponseEntity<Void> deletar(@PathVariable Long id);
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('VerProduto')")
+    @Operation(summary = "buscar produto por id")
+    public ResponseEntity<ProdutoResponse> buscarPorId(@PathVariable Long id);
 }

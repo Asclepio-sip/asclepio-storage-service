@@ -47,4 +47,12 @@ public class ProdutoController implements ProdutoApi {
 
         return ResponseEntity.noContent().build();
     }
+
+    @Override
+    public ResponseEntity<ProdutoResponse> buscarPorId(Long id) {
+
+        Produto produto = produtoService.buscarPorId(id);
+
+        return ResponseEntity.ok(ProdutoResponse.fromEntity(produto));
+    }
 }
