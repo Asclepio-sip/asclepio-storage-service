@@ -1,18 +1,18 @@
 spring:
   application:
     name: asclepio-storage-service
-
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
-
   jpa:
     hibernate:
       ddl-auto: update
-
     show-sql: true
-
     properties:
       hibernate:
         format_sql: true
@@ -26,6 +26,7 @@ r2:
   bucket: ${R2_BUCKET}
   endpoint: ${R2_ENDPOINT}
   public-url: ${R2_PUBLIC_URL}
+
 api:
   security:
     token:

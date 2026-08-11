@@ -28,7 +28,7 @@ public interface ProdutoApi {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAuthority('CriarProduto')")
     @Operation(summary = "Criar produto com imagem")
-    ResponseEntity<ProdutoResponse> criar(@RequestParam String nome, @RequestParam(required = false) String descricao, @RequestParam(required = false) String marca, @RequestParam Long categoriaId, @RequestParam(required = false) MultipartFile imagem);
+    ResponseEntity<ProdutoResponse> criar(@RequestParam String nome, @RequestParam(required = false) String descricao, @RequestParam(required = false) String marca,@RequestParam(required = false) Long categoriaId, @RequestParam(required = false) MultipartFile imagem);
 
     @PatchMapping("/{id}")
     @PreAuthorize("hasAuthority('EditarProduto')")
@@ -44,4 +44,12 @@ public interface ProdutoApi {
     @PreAuthorize("hasAuthority('VerProduto')")
     @Operation(summary = "buscar produto por id")
     public ResponseEntity<ProdutoResponse> buscarPorId(@PathVariable Long id);
+
+    @PatchMapping(value = "/{id}/imagem", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('EditarProduto')")
+    @Operation(summary = "Atualizar imagem do produto")
+    ResponseEntity<ProdutoResponse> atualizarImagem(
+            @PathVariable Long id,
+            @RequestParam MultipartFile imagem
+    );
 }

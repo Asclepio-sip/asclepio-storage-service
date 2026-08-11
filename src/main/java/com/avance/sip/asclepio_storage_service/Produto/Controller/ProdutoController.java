@@ -55,4 +55,10 @@ public class ProdutoController implements ProdutoApi {
 
         return ResponseEntity.ok(ProdutoResponse.fromEntity(produto));
     }
+
+    @Override
+    public ResponseEntity<ProdutoResponse> atualizarImagem(Long id, MultipartFile imagem) {
+        Produto produto = produtoService.atualizarImagem(id, imagem);
+        return ResponseEntity.ok(ProdutoResponse.fromEntity(produto));
+    }
 }

@@ -63,6 +63,36 @@ public class StorageService {
         return publicUrl + "/" + key;
     }
 
+    public void deletar(String imagemUrl) {
+
+        if (imagemUrl == null || imagemUrl.isBlank()) {
+            return;
+        }
+
+        String key = extrairKey(imagemUrl);
+
+        if (key == null) {
+            return;
+        }
+
+        try {
+            s3Client.deleteObject(b -> b.bucket(bucket).key(key));
+        } catch (Exception e) {
+            System.out.println("Falha ao deletar imagem antiga do bucket: " + e.getMessage());
+        }
+    }
+
+    private String extrairKey(String imagemUrl) {
+
+        String prefixo = publicUrl + "/";
+
+        if (!imagemUrl.startsWith(prefixo)) {
+            return null;
+        }
+
+        return imagemUrl.substring(prefixo.length());
+    }
+
     private BufferedImage redimensionar(BufferedImage original, int tamanhoMaximo) {
 
         int larguraOriginal = original.getWidth();

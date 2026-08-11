@@ -123,9 +123,6 @@ public class ProdutoService {
             throw new BadRequestException("Nome do produto é obrigatório");
         }
 
-        if (categoriaId == null) {
-            throw new BadRequestException("Categoria é obrigatória");
-        }
 
         Long empresaId = empresaContext.getEmpresaId();
         String nomeTratado = nome.trim();
@@ -134,7 +131,12 @@ public class ProdutoService {
             throw new BadRequestException("Produto já existe nessa empresa");
         }
 
-        Categoria categoria = buscarCategoriaPorId(categoriaId);
+        Categoria categoria = null;
+
+        if (categoriaId != null) {
+            categoria = buscarCategoriaPorId(categoriaId);
+        }
+
 
         String imagemUrl = null;
 
@@ -157,6 +159,36 @@ public class ProdutoService {
         return repository.save(produto);
     }
 
+    public Produto atualizarImagem(Long id, MultipartFile imagem) {
+
+        if (imagem == null || imagem.isEmpty()) {
+            throw new BadRequestException("Imagem é obrigatória");
+        }
+
+        Produto produto = buscarPorId(id);
+
+        String imagemAntigaUrl = produto.getImagemUrl(); // guarda ANTES de trocar
+
+        String novaImagemUrl;
+
+        try {
+            novaImagemUrl = storageService.upload(imagem);
+        } catch (Exception e) {
+            throw new BadRequestException("Erro ao enviar imagem do produto: " + e.getMessage());
+        }
+
+        produto.alterarImagem(novaImagemUrl);
+
+        Produto produtoSalvo = repository.save(produto);
+
+        // só deleta a antiga DEPOIS que a nova já está salva com sucesso no banco
+        if (imagemAntigaUrl != null && !imagemAntigaUrl.isBlank()) {
+            storageService.deletar(imagemAntigaUrl);
+        }
+
+        return produtoSalvo;
+    }
+
     public Produto buscarPorId(Long id) {
 
         if (id == null) {
@@ -169,9 +201,6 @@ public class ProdutoService {
 
     private Categoria buscarCategoriaPorId(Long categoriaId) {
 
-        if (categoriaId == null) {
-            throw new BadRequestException("Categoria é obrigatória");
-        }
 
         return categoriaRepository
                 .findByIdAndEmpresaId(categoriaId, empresaContext.getEmpresaId())
@@ -188,9 +217,7 @@ public class ProdutoService {
             throw new BadRequestException("Nome do produto é obrigatório");
         }
 
-        if (dto.categoriaId() == null) {
-            throw new BadRequestException("Categoria é obrigatória");
-        }
+
     }
 
     private void atualizarTexto(String valor, Consumer<String> setter) {

@@ -12,7 +12,9 @@ public record ProdutoResponse(
         String imagemUrl, Long categoriaId,
         String categoriaNome,
         LocalDateTime criadoEm,
-        LocalDateTime atualizadoEm
+        LocalDateTime atualizadoEm,
+        Integer quantidadeVariacoes
+
 ) {
 
     public static ProdutoResponse fromEntity(Produto produto) {
@@ -25,7 +27,9 @@ public record ProdutoResponse(
                 produto.getCategoria() != null ? produto.getCategoria().getId() : null,
                 produto.getCategoria() != null ? produto.getCategoria().getNomeCategoria() : null,
                 produto.getCriadoEm(),
-                produto.getAtualizadoEm()
+                produto.getAtualizadoEm(),
+                produto.getVariacoes().size()
+
         );
     }
 }

@@ -42,8 +42,8 @@ public class Produto {
     @Column(name = "PRO_ATUALIZADO_EM")
     private LocalDateTime atualizadoEm;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "PRO_CATEGORIA_ID", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "PRO_CATEGORIA_ID", nullable = true)
     private Categoria categoria;
 
     @OneToMany(mappedBy = "produto", cascade = CascadeType.ALL, orphanRemoval = true)

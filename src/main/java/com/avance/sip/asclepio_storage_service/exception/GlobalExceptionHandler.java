@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 
@@ -79,6 +80,22 @@ public class GlobalExceptionHandler {
                         409,
                         "DATA_INTEGRITY_ERROR",
                         "Não foi possível concluir a operação. Verifique se o registro já existe ou se está sendo usado em outro lugar.",
+                        request.getRequestURI()
+                )
+        );
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSize(
+            MaxUploadSizeExceededException ex,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(
+                new ErrorResponse(
+                        LocalDateTime.now(),
+                        413,
+                        "PAYLOAD_TOO_LARGE",
+                        "A imagem enviada é muito grande. Envie um arquivo de até 15MB.",
                         request.getRequestURI()
                 )
         );

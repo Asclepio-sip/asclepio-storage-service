@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public interface ProdutoVariacaoApi {
 
     @GetMapping
-    @PreAuthorize("hasAuthority('VerProduto')")
+    @PreAuthorize("hasAuthority('VerProduto') or hasAuthority('CriarPedido')")
     ResponseEntity<Page<ProdutoVariacaoResponse>> listar(
             @ParameterObject ProdutoVariacaoFiltro filtro,
             @ParameterObject Pageable pageable
